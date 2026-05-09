@@ -16,15 +16,24 @@ This product includes software derived from prior work:
   https://github.com/dakshaymehta/cardputer-claude-os
   Licensed under the Apache License, Version 2.0.
 
-This repository's contents under `worker/` (Cloudflare Worker source,
-wrangler config, package.json, and worker README) are vendored verbatim
-from cardputer-claude-os. All credit for that code goes to its
-upstream authors; only deployment configuration values (KV namespace
-id, secrets) are intended to be changed locally.
+This repository's contents under `worker/` are derived from the
+Cloudflare Worker in cardputer-claude-os. The upstream code was
+imported verbatim and then modified as follows:
+
+  - The `/ask` handler's speech-to-text step has been switched from
+    OpenAI's hosted Whisper API to Cloudflare Workers AI's
+    `@cf/openai/whisper` model (via an `[ai]` binding in
+    `wrangler.toml`). This removes the `OPENAI_API_KEY` dependency.
+    Notice of modification per Apache 2.0 §4(b) appears at the top of
+    `worker/src/worker.js` and in `worker/README.md`.
+
+All other contents under `worker/` (auth flow, conversation-memory
+logic, wire format, deploy steps, package.json) remain as written
+upstream; credit goes to its upstream authors.
 
 The contents of `device/` are an original port of the Push-to-Claude
 device application from MicroPython on the M5Stack Cardputer to
 C++/Arduino on the M5Stack Core2, using the M5Unified library. The
 port preserves the on-device protocol (raw WAV body to /ask, JSON
 prompt to /ask-text, x-device-secret auth header) so the upstream
-Worker continues to work unmodified.
+Worker continues to work with this device.

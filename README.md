@@ -2,10 +2,10 @@
 
 A handheld Claude voice client for the [M5Stack Core2](https://docs.m5stack.com/en/core/core2). Hold a button, speak a question, get a 1–3 sentence reply on the LCD. Conversation memory is kept for 24 hours per device so follow-ups retain context.
 
-This is a port of the **Push-to-Claude** application from [`dakshaymehta/cardputer-claude-os`](https://github.com/dakshaymehta/cardputer-claude-os) (itself forked from [`moremas/build-with-claude`](https://github.com/moremas/build-with-claude)) — moved from MicroPython on the Cardputer to C++/Arduino on the Core2, using [M5Unified](https://github.com/m5stack/M5Unified). The Cloudflare Worker that does Whisper STT + Claude chat with conversation memory is **vendored unchanged** from the upstream; the on-device wire protocol is identical.
+This is a port of the **Push-to-Claude** application from [`dakshaymehta/cardputer-claude-os`](https://github.com/dakshaymehta/cardputer-claude-os) (itself forked from [`moremas/build-with-claude`](https://github.com/moremas/build-with-claude)) — moved from MicroPython on the Cardputer to C++/Arduino on the Core2, using [M5Unified](https://github.com/m5stack/M5Unified). The Cloudflare Worker that does STT + Claude chat with conversation memory is derived from the upstream's, with one substantive change: STT runs on Cloudflare Workers AI's `@cf/openai/whisper` model instead of OpenAI's hosted Whisper API, so there's no OpenAI account or key in the loop.
 
 ```
-M5Stack Core2 ──► Cloudflare Worker ──► OpenAI Whisper (STT)
+M5Stack Core2 ──► Cloudflare Worker ──► Workers AI: @cf/openai/whisper (STT)
                          │
                          ├──────────► Anthropic /v1/messages (Claude Haiku 4.5)
                          │
@@ -52,8 +52,8 @@ As far as I can tell at the time of writing, this is the first Claude (rather th
 │   └── src/
 │       ├── main.cpp
 │       └── config.h.example  (copy to config.h, fill in secrets)
-└── worker/                  Vendored verbatim from cardputer-claude-os
-    ├── README.md             ← upstream's deploy guide
+└── worker/                  Derived from cardputer-claude-os (STT swapped to Workers AI)
+    ├── README.md             ← deploy guide (upstream's, with the STT change called out)
     ├── package.json
     ├── wrangler.toml
     └── src/worker.js
@@ -78,7 +78,6 @@ npx wrangler login
 npx wrangler kv namespace create HISTORY    # paste the id into wrangler.toml
 npx wrangler secret put DEVICE_SECRET       # any random string; you'll paste it on the device too
 npx wrangler secret put ANTHROPIC_API_KEY
-npx wrangler secret put OPENAI_API_KEY
 npx wrangler deploy
 ```
 
@@ -123,4 +122,4 @@ v1, voice-only. Known TODOs:
 
 Apache 2.0. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
 
-The Cloudflare Worker, its README, and its Wrangler config in `worker/` are vendored unchanged from [`dakshaymehta/cardputer-claude-os`](https://github.com/dakshaymehta/cardputer-claude-os). All credit for that code goes to the upstream authors; this repository only adds the Core2 device port under `device/`.
+The Cloudflare Worker in `worker/` is derived from [`dakshaymehta/cardputer-claude-os`](https://github.com/dakshaymehta/cardputer-claude-os) with one substantive modification (STT swapped from OpenAI Whisper to Cloudflare Workers AI Whisper); the change is documented in [`NOTICE`](NOTICE) and at the top of `worker/src/worker.js` and `worker/README.md`. All other Worker logic — auth, conversation memory, wire format — is the upstream authors' work. The Core2 device port under `device/` is original to this repo.

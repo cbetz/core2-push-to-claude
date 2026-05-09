@@ -11,3 +11,8 @@ compatibility_date = "2025-01-01"
 [[kv_namespaces]]
 binding = "HISTORY"
 id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+# Workers AI binding — used for Whisper STT in /ask. No id required;
+# Workers AI is enabled per Cloudflare account and billed by neurons.
+[ai]
+binding = "AI"

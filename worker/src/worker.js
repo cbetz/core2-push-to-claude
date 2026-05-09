@@ -14,6 +14,13 @@
 // full sequence to Claude, then appends the assistant turn back to KV.
 // This is what turns the device from a one-shot query box into a chat
 // partner that remembers what you just talked about.
+//
+// MODIFIED from the upstream cardputer-claude-os Worker (Apache 2.0):
+// the /ask handler's speech-to-text step now calls Cloudflare Workers
+// AI's @cf/openai/whisper model via the AI binding, instead of POSTing
+// to OpenAI's hosted Whisper API. This removes the OPENAI_API_KEY
+// dependency; everything else (Claude call, conversation memory,
+// auth, wire format) is unchanged from upstream.
 
 const SYSTEM_PROMPT =
   "You are Claude responding on a 240x135 pixel handheld LCD. " +
@@ -122,31 +129,21 @@ async function handleAsk(request, env) {
     );
   }
 
-  const form = new FormData();
-  form.append(
-    "file",
-    new Blob([audioBytes], { type: "audio/wav" }),
-    "audio.wav",
-  );
-  form.append("model", "whisper-1");
-  form.append("response_format", "text");
-
-  const whisperResp = await fetch(
-    "https://api.openai.com/v1/audio/transcriptions",
-    {
-      method: "POST",
-      headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}` },
-      body: form,
-    },
-  );
-  if (!whisperResp.ok) {
-    const detail = (await whisperResp.text()).slice(0, 300);
+  // Transcribe via Workers AI. The @cf/openai/whisper model expects
+  // the audio as a regular number[] of byte values; the AI binding
+  // handles the upload to the model server internally so no separate
+  // API key or fetch() is needed.
+  let transcript;
+  try {
+    const audio = [...new Uint8Array(audioBytes)];
+    const whisperResp = await env.AI.run("@cf/openai/whisper", { audio });
+    transcript = (whisperResp.text || "").trim();
+  } catch (e) {
     return json(
-      { error: "whisper failed", status: whisperResp.status, detail },
+      { error: "whisper failed", detail: String(e).slice(0, 300) },
       502,
     );
   }
-  const transcript = (await whisperResp.text()).trim();
   if (!transcript) {
     return json({ transcript: "", response: "(no speech)" });
   }

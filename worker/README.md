@@ -1,17 +1,23 @@
 # Push-to-Claude Worker
 
-A small Cloudflare Worker that turns the Cardputer into a voice + text
-chat client for Claude. The device records WAV audio (or types text)
-and POSTs it here; the Worker runs Whisper for STT, calls Claude
-Haiku 4.5 with the last few turns of conversation context, and returns
-a reply for the device to render on its 240×135 LCD.
+> **Modified from upstream.** This file documents the Worker as deployed
+> in this repo. The `/ask` handler's STT step has been switched from
+> OpenAI Whisper to Cloudflare Workers AI's `@cf/openai/whisper` model,
+> so there's no `OPENAI_API_KEY` step below. Everything else is the
+> upstream `cardputer-claude-os` Worker.
+
+A small Cloudflare Worker that exposes a voice + text chat endpoint for
+a hardware client. The device records WAV audio (or types text) and
+POSTs it here; the Worker transcribes the audio with Whisper (running
+on Workers AI), calls Claude Haiku 4.5 with the last few turns of
+conversation context, and returns a reply.
 
 ```
-Cardputer-Adv ──► Cloudflare Worker ──► OpenAI Whisper (STT)
-                          │
-                          └──────────► Anthropic /v1/messages (Claude)
-                          │
-                          └─ Workers KV: per-device 8-message history (24h TTL)
+Device ──► Cloudflare Worker ──► Workers AI: @cf/openai/whisper (STT)
+                  │
+                  ├──────────► Anthropic /v1/messages (Claude)
+                  │
+                  └─ Workers KV: per-device 8-message history (24h TTL)
 ```
 
 ## Endpoints
@@ -30,9 +36,8 @@ the Worker's `DEVICE_SECRET` secret.
 
 You'll need:
 
-- A Cloudflare account (free tier is fine for this volume)
+- A Cloudflare account (free tier is fine; Workers AI is billed by "neurons" with a daily free allowance — see _Cost notes_ below)
 - An [Anthropic API key](https://console.anthropic.com/)
-- An [OpenAI API key](https://platform.openai.com/api-keys) (for Whisper STT — only needed if you want voice; you can skip if you only use `/ask-text`)
 - Node.js 18+ on your laptop
 
 ### 1. Install Wrangler and log in
@@ -63,7 +68,6 @@ Copy the `id` into `worker/wrangler.toml`, replacing `REPLACE_WITH_YOUR_KV_NAMES
 
 ```bash
 npx wrangler secret put ANTHROPIC_API_KEY   # paste your Anthropic key
-npx wrangler secret put OPENAI_API_KEY      # paste your OpenAI key
 npx wrangler secret put DEVICE_SECRET       # paste any random 32+ char string
 ```
 
@@ -118,7 +122,6 @@ For local secrets, create `worker/.dev.vars` (gitignored):
 
 ```
 ANTHROPIC_API_KEY=sk-ant-...
-OPENAI_API_KEY=sk-...
 DEVICE_SECRET=...
 ```
 
@@ -130,8 +133,11 @@ npx wrangler tail
 
 ## Cost notes
 
-- **Whisper** (`whisper-1`) is $0.006 / minute of audio. The device caps
-  recordings at 6 s, so each `/ask` is ~$0.0006.
+- **Whisper on Workers AI** (`@cf/openai/whisper`) is billed by neurons.
+  Cloudflare's free tier currently includes 10,000 neurons / day; a 6-second
+  voice clip uses a small fraction of that. Check Cloudflare's [Workers AI
+  pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/)
+  for current numbers.
 - **Claude Haiku 4.5** is around $1 / MTok input, $5 / MTok output as of
   this writing. With a 250-token output cap and short prompts, each turn
   is well under a cent.
@@ -145,5 +151,5 @@ with a 24-hour TTL. Hit `POST /reset` (the launcher binds this to a key
 combo on the device) to clear it sooner. Whisper transcripts are not
 stored anywhere by this Worker — they pass through to Claude and back.
 
-Anthropic and OpenAI's data-retention policies apply to whatever you
-send them. Read theirs.
+Cloudflare's Workers AI data-handling and Anthropic's data-retention
+policies apply to whatever you send through them. Read theirs.
