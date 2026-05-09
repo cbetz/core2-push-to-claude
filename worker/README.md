@@ -90,26 +90,11 @@ Wrangler prints your Worker URL, e.g.
 
 ### 5. Point the device at your Worker
 
-On your laptop, in the cloned repo:
-
-```bash
-cp buddy/device/apps/config.example.py buddy/device/apps/config.py
-```
-
-Edit `buddy/device/apps/config.py`:
-
-```python
-WORKER_BASE = "https://push-to-claude.<your-subdomain>.workers.dev"
-DEVICE_SECRET = "<the same DEVICE_SECRET you put on the Worker>"
-```
-
-Then push the apps to the Cardputer:
-
-```bash
-python3 .claude/skills/m5-onboard/scripts/install_apps.py --port <PORT> --src buddy
-```
-
-Boot the device → pick **Push to Claude** from the launcher → tap SPACE to start recording.
+The device-side setup is hardware-specific. For the M5Stack Core2 client
+in this repo, see the **Configure the device** and **Build and flash**
+sections of the [top-level README](../README.md). You'll paste the
+`https://push-to-claude.<your-subdomain>.workers.dev` URL and the same
+`DEVICE_SECRET` into `device/src/config.h`.
 
 ## Local development
 
