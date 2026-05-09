@@ -1,0 +1,19 @@
+# PlatformIO
+device/.pio/
+device/.pioenvs/
+device/.piolibdeps/
+.vscode/
+
+# Device-side secrets (config.h is gitignored; ship config.h.example)
+device/src/config.h
+
+# Worker / Wrangler
+worker/node_modules/
+worker/.wrangler/
+worker/.dev.vars
+
+# Editor / OS
+.DS_Store
+*.swp
+*.swo
+.idea/

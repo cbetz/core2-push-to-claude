@@ -1,0 +1,13 @@
+name = "push-to-claude"
+main = "src/worker.js"
+compatibility_date = "2025-01-01"
+
+# Conversation history. Last ~8 messages per device-secret kept here
+# with a 24h TTL so follow-up questions retain context.
+#
+# REPLACE the id below with your own. Create one with:
+#   wrangler kv namespace create HISTORY
+# Wrangler will print the new id; paste it here.
+[[kv_namespaces]]
+binding = "HISTORY"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"

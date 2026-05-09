@@ -1,0 +1,30 @@
+Push-to-Claude for M5Stack Core2
+Copyright 2026 Chris Betz
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product includes software derived from prior work:
+
+  build-with-claude
+  Copyright 2026 MAS Event + Design, LLC
+  https://github.com/moremas/build-with-claude
+  Licensed under the Apache License, Version 2.0.
+
+  cardputer-claude-os
+  Fork by Daksha Mehta of build-with-claude, adding the Push-to-Claude
+  voice + chat application and the Cloudflare Worker relay.
+  https://github.com/dakshaymehta/cardputer-claude-os
+  Licensed under the Apache License, Version 2.0.
+
+This repository's contents under `worker/` (Cloudflare Worker source,
+wrangler config, package.json, and worker README) are vendored verbatim
+from cardputer-claude-os. All credit for that code goes to its
+upstream authors; only deployment configuration values (KV namespace
+id, secrets) are intended to be changed locally.
+
+The contents of `device/` are an original port of the Push-to-Claude
+device application from MicroPython on the M5Stack Cardputer to
+C++/Arduino on the M5Stack Core2, using the M5Unified library. The
+port preserves the on-device protocol (raw WAV body to /ask, JSON
+prompt to /ask-text, x-device-secret auth header) so the upstream
+Worker continues to work unmodified.

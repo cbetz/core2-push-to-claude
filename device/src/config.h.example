@@ -1,0 +1,20 @@
+// Copy this file to config.h (gitignored) and fill in your values.
+//
+//   cp device/src/config.h.example device/src/config.h
+//
+// All four values are required for the device to function.
+
+#pragma once
+
+// WiFi network the Core2 should join.
+#define WIFI_SSID  "your-wifi-ssid"
+#define WIFI_PASS  "your-wifi-password"
+
+// The Cloudflare Worker URL that wrangler printed at deploy time.
+// No trailing slash. The device appends "/ask", "/ask-text", "/reset".
+#define WORKER_BASE  "https://push-to-claude.your-subdomain.workers.dev"
+
+// Must exactly match the DEVICE_SECRET you set on the Worker via:
+//   npx wrangler secret put DEVICE_SECRET
+// Any random string; treat it as a password.
+#define DEVICE_SECRET  "paste-your-device-secret-here"
