@@ -225,20 +225,38 @@ static void doRecord() {
     mode = Mode::Recording;
     drawRecordingFrame();
 
+    // Wipe the buffer so a failed/silent record sends real zeros to
+    // Whisper rather than uninitialized PSRAM (which transcribes as
+    // hallucinated numbers).
+    memset(audio_buf, 0, PCM_BYTES);
+
+    Serial.println("[rec] starting");
     if (!M5.Mic.record(audio_buf, SAMPLE_COUNT, SAMPLE_RATE, false)) {
+        Serial.println("[rec] record() returned false");
         last_error = "M5.Mic.record() failed to start";
         mode = Mode::Error;
         drawError();
         return;
     }
 
+    // Give the mic task a moment to flip isRecording() to true.
     uint32_t t0 = millis();
+    while (!M5.Mic.isRecording() && millis() - t0 < 200) {
+        delay(5);
+    }
+    if (!M5.Mic.isRecording()) {
+        Serial.println("[rec] mic never entered recording state");
+        last_error = "mic never started — check internal_mic config";
+        mode = Mode::Error;
+        drawError();
+        return;
+    }
+
     uint32_t phase = (uint32_t)-1;
     while (M5.Mic.isRecording()) {
         M5.update();
         if (M5.BtnB.wasPressed()) {
             M5.Mic.end();
-            M5.Mic.begin();
             mode = Mode::Idle;
             drawIdle();
             return;
@@ -250,6 +268,15 @@ static void doRecord() {
         }
         delay(20);
     }
+
+    // Quick sanity peek — three samples spread across the buffer. If
+    // they're all 0 or all the same, the mic captured nothing real.
+    Serial.printf("[rec] done in %ums  samples[0]=%d  mid=%d  end=%d\n",
+                  millis() - t0,
+                  audio_buf[0],
+                  audio_buf[SAMPLE_COUNT / 2],
+                  audio_buf[SAMPLE_COUNT - 1]);
+
     doUpload();
 }
 
@@ -350,16 +377,22 @@ static void doReset() {
 
 // ---- Arduino entry points ----------------------------------------
 void setup() {
+    // Core2 shares I2S0 between speaker and mic; you can't run both,
+    // and turning the mic on at runtime via M5.Mic.begin() is unreliable
+    // because M5.begin() has already configured the bus for the speaker
+    // by then. Declare the choice in the config struct *before*
+    // M5.begin() so I2S is set up for the mic from the start.
     auto cfg = M5.config();
+    cfg.internal_mic = true;
+    cfg.internal_spk = false;
     M5.begin(cfg);
     M5.Display.setRotation(1);
     M5.Display.setBrightness(160);
     M5.Display.fillScreen(COL_BLACK);
 
-    // Core2 shares I2S between speaker and mic — release the speaker
-    // so M5.Mic can claim the bus.
-    M5.Speaker.end();
-    M5.Mic.begin();
+    Serial.begin(115200);
+    Serial.printf("[boot] free heap=%u  psram=%u\n",
+                  ESP.getFreeHeap(), ESP.getFreePsram());
 
     drawCentered("booting...", 100, COL_CREAM, 2);
 
@@ -370,9 +403,13 @@ void setup() {
         drawError();
         return;
     }
+    memset(audio_buf, 0, PCM_BYTES);
 
     drawCentered("connecting WiFi...", 130, COL_GRAY, 1);
     connectWifi(15000);
+    Serial.printf("[boot] wifi=%s ip=%s\n",
+                  wifi_ok ? "ok" : "FAIL",
+                  wifi_ok ? WiFi.localIP().toString().c_str() : "-");
     drawIdle();
 }
 
